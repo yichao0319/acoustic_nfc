@@ -14,6 +14,9 @@ Codes:
     - evaluate.m
         decode the recorded wav files from my experiments and output the BER, channel coefficient, and etc.
 
+    - evaluate_one.m
+        09/17 try to automatically find the threshold, and only evaluate 1 wav file
+
 - task_plot_eval
     Plot some figures from experiment results.
 
