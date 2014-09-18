@@ -1,22 +1,21 @@
-function [BER] = evaluate_one(seed, filename, input_rcv_dir, output_rcv_dir, start_offset, threshold)
+function get_sent_raw(seed)
 
 addpath('../util/matlab/matlab_code/');
+
+start_offset = 1;
+
+input_dir = '../data/sent_pkts/';
+output_dir = '../processed_data/task_decode/sent_pkts/';
+
+%--------------------------------------------------------------------------
+% 0) Initialize some global constants
+%--------------------------------------------------------------------------
 
 global xxx_fec_decodeTable
 global xxx_fec_encodeTable
 
-DEBUG0 = 0;
-DEBUG1 = 1;
-DEBUG2 = 0;  %% progress
-DEBUG3 = 0;  %% basic info
-DEBUG4 = 0;  %% process info
-DEBUG5 = 0;  %% final output
-
-
-% input_rcv_dir  = '../data/rcv_pkts/exp0523/';
-input_sent_dir = '../processed_data/task_decode/sent_pkts/';
-% output_rcv_dir = '../processed_data/task_decode/rcv_pkts/exp0523/';
-
+% Initialize random seed
+rng(seed);
 
 % Use 44.1KHz as the sampling frequency for the WAV file, because it
 % is almost universally supported on mobile devices.
@@ -32,6 +31,7 @@ f_max = 20000;
 Nfft = 256;
 % Nfft = 128;
 Nfft_useful = 1 + floor(Nfft * (f_max - f_min) / Fs);  % Nfft_useful = 6
+fprintf('Nfft_useful = %d\n', Nfft_useful);
 
 % 1/2 symbols for cyclic prefix
 Ncp = Nfft/2;
@@ -44,57 +44,47 @@ slice_width = 4;
 % on average how many channels a bit consumes in an OFDM symbo
 channels_per_bit = 2;
 data_size = Nfft_useful / channels_per_bit * (slice_width - 1) * slice_count;
+fprintf('data_size = %d\n', data_size);
 
-
-if DEBUG3,
-  fprintf('Fs               = %d\n', Fs);
-  fprintf('[min:max]        = [%d:%d]\n', f_min, f_max);
-  fprintf('Nfft             = %d\n', Nfft);
-  fprintf('Nfft_useful      = %d\n', Nfft_useful);
-  fprintf('Ncp              = %d\n', Ncp);
-  fprintf('slice_count      = %d\n', slice_count);
-  fprintf('slice_width      = %d\n', slice_width);
-  fprintf('channels_per_bit = %d\n', channels_per_bit);
-  fprintf('data_size        = %d\n', data_size);
-end
 
 % initialize FEC encoding / decoding 
 [xxx_fec_decodeTable,xxx_fec_encodeTable] = fec_init_table();
 
+%--------------------------------------------------------------------------
+% 1) Read the .wav file
+%--------------------------------------------------------------------------
+filename=sprintf('%ssent_packet%d.wav', input_dir, seed);
+% filename=sprintf('sent_packet%d.wav',seed);
+[wav_packet_orig,Fs,nbits] = wavread(filename);
+sample_count = length(wav_packet_orig);
+fprintf('wav_packet_orig %d x %d\n', size(wav_packet_orig));
 
-%% -----------------------------------
-%% Start
-%% -----------------------------------
+figure(4)
+clf
+plot(wav_packet_orig)
+set(gca, 'XLim', [0 200000])
 
-rng(seed);
 
+%--------------------------------------------------------------------------
+% 2) Prepare modulated preamble (shifted by a half CP)
+%--------------------------------------------------------------------------
 Nofdm = Nfft + Ncp;
+fprintf('Nofdm = %d\n', Nofdm);
 Ncp_half = floor(Ncp/2);
 
 preamble_length = Nfft_useful * slice_count;
+fprintf('preamble_length = %d\n', preamble_length);
 [preamble, preamble_bytes] = swch_find_preamble(preamble_length);
 modPreamble = step(comm.BPSKModulator,preamble');
 modPreamble = reshape(modPreamble,Nfft_useful,slice_count);
+fprintf('modPreamble %d x %d\n', size(modPreamble));
 
 % each column is a slice
 modPreamble_padded = [modPreamble; zeros(Nfft-Nfft_useful,slice_count)];
-
-if DEBUG3,
-  fprintf('  Nofdm = %d\n', Nofdm);
-  fprintf('  Ncp_half = %d\n', Ncp_half);
-  fprintf('  preamble_length = %d\n', preamble_length);
-  fprintf('  preamble (%d x %d): ', size(preamble));
-  fprintf('%d, ', preamble(1:20)');
-  fprintf('...\n');
-  fprintf('  modPreamble (%d x %d)\n', size(modPreamble));
-  fprintf('  modPreamble_padded (%d x %d)\n', size(modPreamble_padded));
-end
+fprintf('modPreamble_padded %d x %d\n', size(modPreamble_padded));
 
 modPreamble_ifft = zeros(Nfft,slice_count);
 for slice = 1:slice_count
-
-  % fprintf('  slice %d: modPreamble_ifft (%d x %d), ifft modPreamble_padded (%d x %d)\n', slice, size(modPreamble_ifft(:,slice)), size(ifft(modPreamble_padded(:,slice),Nfft)));
-
   modPreamble_ifft(:,slice) = ifft(modPreamble_padded(:,slice),Nfft);
 end
 
@@ -102,11 +92,7 @@ end
 modPreamble_ifft = [modPreamble_ifft(Nfft-Ncp_half+1:Nfft,:); modPreamble_ifft(1:Nfft-Ncp_half,:)];
 
 % perform fft
-modPreamble_fft = zeros(Nfft, slice_count);
 for slice = 1:slice_count
-
-  % fprintf('  slice %d: modPreamble_fft (%d x %d), fft modPreamble_ifft (%d x %d)\n', slice, size(modPreamble_fft(:,slice)), size(fft(modPreamble_ifft(:,slice),Nfft)));
-
   modPreamble_fft(:,slice) = fft(modPreamble_ifft(:,slice),Nfft);
 end
 
@@ -149,54 +135,9 @@ for sc = 1:Nfft_useful
   subCarrier_swch(sc,(base_idx+1):(base_idx+Nfft)) = subCarrier_ifft;
 end
 
-% continue;
-%% --------------------------------------------
-%% read ground truth
-%% --------------------------------------------
-if DEBUG2, fprintf('Read ground truth\n'); end
-
-gt_symbol = load([input_sent_dir 'sent_pkt' int2str(seed) '.symbol.txt']);
-gt_demod  = load([input_sent_dir 'sent_pkt' int2str(seed) '.demod.txt']);
-if DEBUG4, fprintf('    gt_symbol %d x %d\n', size(gt_symbol)); end
-if DEBUG4, fprintf('    gt_demod %d x %d\n', size(gt_demod)); end
-
-
-
-%% --------------------------------------------
-%% read received file
-%% --------------------------------------------
-if DEBUG2, fprintf('Read received file\n'); end
-
-file_path_name = [input_rcv_dir filename '.wav'];
-
-% if exist([output_rcv_dir filename '.h.txt'], 'file') == 2
-%   return;
-% end
-
-if DEBUG3, fprintf('- %s\n', file_path_name); end
-ber = 0;
-num_bits = 0;
-
-
-%--------------------------------------------------------------------------
-% 1) Read the .wav file
-%--------------------------------------------------------------------------
-if DEBUG2, fprintf('Read file\n'); end
-
-[wav_packet_orig, Fs, nbits] = wavread(file_path_name);
-sample_count = length(wav_packet_orig);
-if DEBUG4, fprintf('  wav_packet_orig %d x %d\n', size(wav_packet_orig)); end
-
-figure(4)
-clf
-plot(wav_packet_orig)
-set(gca, 'XLim', [0 200000])
-
-
 %--------------------------------------------------------------------------
 % 3) Perform synchronization
 %--------------------------------------------------------------------------
-if DEBUG2, fprintf('Perform synchronization\n'); end
 
 % size of entire sandwich (note that there is one empty symbol at the end)
 swch_samples = (slice_width * slice_count + 1) * Nofdm;
@@ -205,22 +146,73 @@ sync_ofdm = zeros(1,Nofdm*slice_count);
 sync_ofdm_matrix = zeros(Nofdm,slice_count);
 sync_ofdm_no_cp = zeros(Nfft,slice_count);
 
-preamble_offset = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nfft_useful, subCarrier_swch, modPreamble_fft_norm, start_offset, threshold, modPreamble_swch, wav_packet_orig);
-if DEBUG4, fprintf('  preamble_offset=%d\n', preamble_offset); end
+p_lst = [];
+p_max = -1;
+preamble_offset = start_offset - 1;
 
+step_size = swch_samples;
+fprintf('swch_samples=%d, sample_count=%d\n', swch_samples, sample_count);
+for try_offset = start_offset:step_size:(sample_count - (swch_samples*2 - 1))
+  
+  max_offset = min(sample_count, try_offset + step_size + (swch_samples*2 - 1));
+  try_p_cnt = max_offset - (try_offset + (swch_samples*2 - 1)) + 1;
+  
+  try_packets = ...
+          wav_packet_orig((try_offset:(max_offset-swch_samples))) + ...
+      i * wav_packet_orig((try_offset+swch_samples):max_offset);
+  try_packets = reshape(try_packets,1,[]);
 
-if preamble_offset==-1
-  fprintf('Unable to find preamble\n\n');
-  return
+  modInnerProd = swch_prod(conj(modPreamble_swch), try_packets);
+  modInnerProd = modInnerProd(1:try_p_cnt);
+
+  scProd = zeros(1,max_offset-try_offset+1-swch_samples);
+  for sc = 1:Nfft_useful
+    scProd = scProd + swch_prod(conj(subCarrier_swch(sc,:)), try_packets).^2;
+  end
+  
+  scNormSq = zeros(1,try_p_cnt);
+  for slice = 1:slice_count
+    base_idx = (slice-1)*Nofdm*slice_width;
+    scNormSq = scNormSq + scProd(base_idx+1:base_idx+try_p_cnt);
+  end
+  
+  try_p_lst = modInnerProd ./ (modPreamble_fft_norm * sqrt(scNormSq));
+
+  [p_max,idx] = max(try_p_lst);
+  p_lst = [p_lst try_p_lst];
+
+  % fprintf('try_p_lst %d x %d\n', size(try_p_lst));
+  fprintf('%d: p_max = %f, idx = %d\n', try_offset, p_max, idx);
+  
+  % if (p_max >= 0.4) 
+  if (p_max >= 0.7)
+    preamble_offset = idx + try_offset - 1;
+    break;
+  end
+
 end
 
+% fd=fopen('p.txt','w');
+% fprintf(fd,'%f\n',p_lst);
+% fclose(fd);
+% fprintf('p_lst = %d x %d\n', size(p_lst));
 
-%% --------------------------------------------
-%% Get channel coefficient
-%% --------------------------------------------
-if DEBUG2, fprintf('Get channel coefficient\n'); end
+% figure(5)
+% clf
+% plot(p_lst)
+% set(gca, 'XLim', [0 200000])
+
+% return;
+
+if (preamble_offset <= 0)
+  fprintf('Unable to find preamble in synchronization\n');
+  return;
+end
+
+% return;
+
 for try_offset = preamble_offset
-
+  
   %--------------------------------------------------------------------------
   % 4.1) Get the sync symbols
   %--------------------------------------------------------------------------
@@ -266,7 +258,7 @@ for try_offset = preamble_offset
   %--------------------------------------------------------------------------
   preamble_offset = try_offset;
   Hfft = sync_fft ./ modPreamble;
-  if DEBUG4, fprintf('    Hfft %d x %d\n', size(Hfft)); end
+  fprintf('Hfft %d x %d\n', size(Hfft));
 
   % figure(6)
   % clf
@@ -316,23 +308,26 @@ end
 
 decodedData = [];
 
+if preamble_offset==-1
+  fprintf('Unable to find preamble\n');
+  return
+end
+
+preamble_offset
+p_max
 
 %--------------------------------------------------------------------------
 % 4) Perform decoding
 %--------------------------------------------------------------------------
-if DEBUG2, fprintf('Perform decoding\n'); end
 
 % prepare the complex numbers
 
 % (slice_width * slice_count + 1) * Nofdm;
-if DEBUG4, fprintf('  raw data = %d ~ %d\n', preamble_offset, (preamble_offset+swch_samples*2-1)); end
 swch_raw = wav_packet_orig(preamble_offset:(preamble_offset+swch_samples*2-1));
 swch_raw = reshape(swch_raw, Nofdm, (slice_width*slice_count+1)*2);
 
 % do not include the last column, which is supposed to be an all-zero symbol
 swch_data = swch_raw(:,1:(slice_width*slice_count)) + i*swch_raw(:,(slice_width*slice_count+2):(slice_width*slice_count*2+1));
-
-% swch_data(1:5, 1:5)
 
 decodedData = zeros(Nfft_useful/channels_per_bit, (slice_width - 1) * slice_count);
 
@@ -340,8 +335,8 @@ decodedData = zeros(Nfft_useful/channels_per_bit, (slice_width - 1) * slice_coun
 rng(seed*2);
 rand_bits = randi([0 1], data_size, 1);
 
-data_equalized = zeros(Nfft_useful, slice_count*slice_width);
-data_demod     = zeros(Nfft_useful, slice_count*slice_width);
+sent_equalized = zeros(Nfft_useful, slice_width*slice_count);
+sent_demod     = zeros(Nfft_useful, slice_width*slice_count);
 
 for slice = 1:slice_count
   hfft = Hfft(:,slice);
@@ -360,10 +355,6 @@ for slice = 1:slice_count
     % 4.2) remove 1/2 CP
     %--------------------------------------------------------------------------
     swch_data_no_cp = swch_data_bb((Ncp-Ncp_half+1):(Nofdm-Ncp_half));
-
-    % if slice == 1 & count == 2
-    %   swch_data_no_cp(1:5)'
-    % end
     
     %--------------------------------------------------------------------------
     % 4.3) perform FFT
@@ -375,31 +366,15 @@ for slice = 1:slice_count
     % 4.4) channel compensation
     %--------------------------------------------------------------------------
     swch_equalized = swch_fft ./ hfft;
-    data_equalized(:, col_idx) = swch_equalized;
-    % this_gt_equalized = gt_symbol(:, col_idx);
 
-    % if slice == 1 & count == 2
-    %   swch_equalized'
-    % end
+    sent_equalized(:, col_idx) = swch_equalized;
     
     %--------------------------------------------------------------------------
     % 4.5) demodulation
     %--------------------------------------------------------------------------
     swch_demod = step(comm.BPSKDemodulator, swch_equalized);
-    
-    % if slice == 1 & count == 2
-    %   swch_demod'
-    % end
 
-    data_demod(:, col_idx) = swch_demod;
-    % fprintf('    swch_demod %d x %d\n', size(swch_demod));
-    this_gt_demod = gt_demod(:, col_idx);
-    this_num_err = nnz(this_gt_demod - swch_demod);
-    this_num_bits = length(swch_demod);
-    ber = ber + this_num_err;
-    num_bits = num_bits + this_num_bits;
-    % fprintf('    #errs = %d, #bits = %d\n', this_num_err, this_num_bits);
-    
+    sent_demod(:, col_idx) = swch_demod;
 
     %--------------------------------------------------------------------------
     % 4.6) FEC decode
@@ -445,40 +420,19 @@ for slice = 1:slice_count
   end
 end
 
-decodedData = reshape(decodedData,1,[]);
-dd = size(decodedData);
-[ts, id, len] = swch_decode(decodedData);
-this_ber = ber / num_bits;
-% BERS(fi, seed) = this_ber;
-BER = this_ber;
 
-if DEBUG5, 
-  fprintf('    decodedData size = %d x %d\n', dd);
-  fprintf('    ts               = %d\n', ts);
-  fprintf('    id               = %s\n', id);
-  fprintf('    len              = %d\n', len);
-  fprintf('    ber              = %d / %d = %1.2g\n', ber, num_bits, this_ber);
-end
-
-% result = input('');
-% dlmwrite([output_rcv_dir filename '.h.txt'], Hfft, 'delimiter', '\t');
-Hfft_real = real(Hfft);
-Hfft_imag = imag(Hfft);
-dlmwrite([output_rcv_dir filename '.h.txt'], [Hfft_real Hfft_imag], 'delimiter', '\t');
-% dlmwrite([output_rcv_dir filename '.preamble.txt'], sync_fft, 'delimiter', '\t');
-sync_fft_real = real(sync_fft);
-sync_fft_imag = imag(sync_fft);
-dlmwrite([output_rcv_dir filename '.preamble.txt'], [sync_fft_real sync_fft_imag], 'delimiter', '\t');
-% dlmwrite([output_rcv_dir filename '.symbol.txt'], data_equalized, 'delimiter', '\t');
-data_equalized_real = real(data_equalized);
-data_equalized_imag = imag(data_equalized);
-dlmwrite([output_rcv_dir filename '.symbol.txt'], [data_equalized_real data_equalized_imag], 'delimiter', '\t');
 %%
-dlmwrite([output_rcv_dir filename '.demod.txt'], data_demod, 'delimiter', '\t');
+sent_equalized_real = real(sent_equalized);
+sent_equalized_imag = imag(sent_equalized);
+dlmwrite([output_dir 'sent_pkt' int2str(seed) '.symbol.txt'], [sent_equalized_real sent_equalized_imag]);
+%%
+modPreamble_real = real(modPreamble);
+modPreamble_imag = imag(modPreamble);
+dlmwrite([output_dir 'preamble' int2str(seed) '.txt'], [modPreamble_real modPreamble_imag]);
+%%
+dlmwrite([output_dir 'sent_pkt' int2str(seed) '.demod.txt'], sent_demod);
 
 return;
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% FEC related functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

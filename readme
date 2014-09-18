@@ -1,24 +1,121 @@
-==============================================
+=======================================================
 Project: 
     Acoustic Near Field Communication
 Yi-Chao Chen
 UT Austin
 June 2014
-==============================================
+=======================================================
 
-Codes: 
 
-- task_decode:
-    Decode the recorded wav files from my experiments and output the BER, channel coefficient, and etc.
+=======================================================
+Codes:
+=======================================================
 
-    - evaluate.m
-        decode the recorded wav files from my experiments and output the BER, channel coefficient, and etc.
+- task_decode
 
-    - evaluate_one.m
-        09/17 try to automatically find the threshold, and only evaluate 1 wav file
+    a) get_sent_raw.m
+        - Goal: get sent data
+        - Output:
+            1) sent symbols
+            2) preamble
+            3) raw data
+
+    b) swch_recv_new_get_thresh.m
+        - Goal: used to try different "offset" and threshod to decode received data
+        - Output
+
+        %% sender:
+        Fs = 44100; [wav_packet,Fs,nbits] = wavread('sent_packet3'); sound(wav_packet,Fs);
+
+        %% receiver:
+        Fs = 44100; r = audiorecorder(Fs,16,1); recordblocking(r,5); rcv_packet = getaudiodata(r,'int16'); plot(rcv_packet); wavwrite(rcv_packet,Fs,'rcv_packet3');
+
+        %% decoder:
+        swch_recv_new_get_thresh(3, 'rcv_packet', 1, 0.8); 
+
+    c) evaluate_one.m
+        - Goal: decode received data and compare it with the sent data.  Just process one file so I can separate it from batch codes.
+        - Output:
+            1) BER
+            2) Hfft
+            3) sync_fft
+            4) data_equalized
+            5) data_demod
+
+        - Usage:
+          called by batch_exp0523.m, batch_exp0718.m, ...
+
+    d) sync_pkt.m
+        - Goal: find the start of a packet.
+        - Output:
+            1) preamble_offset: the start of the packet preamble
+
+
+- task_pdp
+    a) get_pdp.m
+        - Goal: Power Delay Profile (PDP) and Energy of Direct Path (EDP)
+        - Output:
+            1) PDP in text
+            2) PDP over distance in figure
+            3) EDP in figures
 
 - task_plot_eval
-    Plot some figures from experiment results.
+    a) plot_eval.m
+        - Goal: plot the figures of decoded results
+        - Output:
+            1) BER
+            2) SNR and phase in subcarriers
+            3) SNR over distance
+            4) phase over time
+            5) phase over distance
 
-    - plot_eval.m
-        Plot: BER, std of channel coefficients
+
+=======================================================
+Sound Code Usage:
+=======================================================
+readme.docx has some info. 
+
+- To generate sending wav files:
+
+swch_send_rcf(seed)
+
+- To run:
+
+1) On machine 2, start the receiver by running the following matlab commands:
+
+% machine2:
+r = audiorecorder(Fs,16,1);
+recordblocking(r,5);
+rcv_packet = getaudiodata(r,'int16');
+plot(rcv_packet);
+wavwrite(rcv_packet,Fs,'rcv_packet3');
+
+2) On machine 1, run sender using the following matlab commands:
+
+% machine1:
+Fs = 44100;
+[wav_packet,Fs,nbits] = wavread('sent_packet3');
+sound(wav_packet,Fs);
+
+3) after finish, on machine 2, run swch_recv_new() to decode the audio file recorded in step 1 (e.g., rcv_packet3)
+
+
+
+=======================================================
+Experiments
+=======================================================
+
+1. exp0523
+    a) clean
+    b) obstacle
+    c) waving hand
+    d) move toward
+    e) move away
+   
+2. exp0718
+    a) exp1: clean (ambient noise: ambient_no.wav)
+    b) exp2: music (ambient noise: ambient_music.wav)
+    c) exp3: obstacle
+    d) exp4: move toward 
+    e) exp5: move away
+
