@@ -1,1 +1,21 @@
-Acoustic Near Field Communication
+==============================================
+Project: 
+    Acoustic Near Field Communication
+Yi-Chao Chen
+UT Austin
+June 2014
+==============================================
+
+Codes: 
+
+- task_decode:
+    Decode the recorded wav files from my experiments and output the BER, channel coefficient, and etc.
+
+    - evaluate.m
+        decode the recorded wav files from my experiments and output the BER, channel coefficient, and etc.
+
+- task_plot_eval
+    Plot some figures from experiment results.
+
+    - plot_eval.m
+        Plot: BER, std of channel coefficients
