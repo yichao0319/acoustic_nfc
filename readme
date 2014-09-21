@@ -50,6 +50,22 @@ Codes:
         - Output:
             1) preamble_offset: the start of the packet preamble
 
+- task_decode_multi
+    decode a file with multiple packets
+    a) decode_one_file.m
+        not done yet...
+
+    b) get_H.m
+        - Goal: calculate the channel coefficient of a packet
+        - Output: 
+            1) Hfft
+            2) sync_fft: the ofdm symbols (?), just for analysis..
+
+    c) sync_pkt.m
+        - Goal: find the start of a packet.
+        - Output:
+            1) preamble_offset: the start of the packet preamble
+
 
 - task_pdp
     a) get_pdp.m
@@ -68,6 +84,14 @@ Codes:
             3) SNR over distance
             4) phase over time
             5) phase over distance
+
+- task_doppler
+    Analyze the doppler effect to estimate the velocity using moving traces
+    a) get_doppler_shift.m
+        - Goal: Analyze the doppler effect to estimate the velocity using moving traces
+        - Output:
+            1) velocity calculated using different methods
+            2) Power spectal density
 
 
 =======================================================
@@ -119,3 +143,30 @@ Experiments
     d) exp4: move toward 
     e) exp5: move away
 
+3. exp0918
+    Goal: mobile traces for doppler effect analysis
+    receiver: Windows(yipin) + mic
+    transmitter: MacBook Air + ATH-M50
+    a) freq
+        use tone generator to generate sound at a frequency
+        - v0.exp1
+            static at farest point
+        - v0.exp2
+            static at closest point
+        - velocity: v3 > v2 > v1
+            - exp 1
+                move the mic toward - stay in front of speaker - move away
+            - exp 2
+                move the mic toward - move away
+
+    b) multiple
+        send multiple files using VLC
+        - v0.exp1
+            static at farest point
+        - v0.exp2
+            static at closest point
+        - velocity: v3 > v2 > v1
+            - exp 1
+                move the mic toward - stay in front of speaker - move away
+            - exp 2
+                move the mic toward - move away

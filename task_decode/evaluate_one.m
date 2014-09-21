@@ -1,6 +1,6 @@
 function [BER] = evaluate_one(seed, filename, input_rcv_dir, output_rcv_dir, start_offset, threshold)
 
-addpath('../util/matlab/matlab_code/');
+addpath('../util/matlab/acoustic_nfc/');
 
 global xxx_fec_decodeTable
 global xxx_fec_encodeTable
