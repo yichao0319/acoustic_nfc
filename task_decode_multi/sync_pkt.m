@@ -64,9 +64,9 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
         end
     end
 
-    % fh = figure;
-    % plot(p_lst);
-    % print(fh, '-dpng', 'tmp.png');
+    fh = figure;
+    plot(p_lst);
+    print(fh, '-dpng', './tmp/plist.png');
 
     % fd=fopen('p2.txt','w');
     % fprintf(fd,'%f\n',p_lst);
@@ -118,7 +118,24 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
         fprintf('avg cc = %f, top 3 avg cc = %f\n', avg_cc, top3_avg_cc);
         this_thresh = (avg_cc + top3_avg_cc) / 2;
         tmp_idx_list = find(p_lst > this_thresh);
-        preamble_offset = tmp_idx_list(1) + start_offset - 1;
+
+        %% every swch_samples*2, find a packet
+        prev = tmp_idx_list(1);
+        for li = tmp_idx_list(2:end)
+            if li >= prev + swch_samples/2
+                prev = li;
+                break;
+            end
+        end
+        preamble_offset = [prev];
+        for li = tmp_idx_list(2:end)
+            if li >= prev + swch_samples*2
+                prev = li;
+                preamble_offset = [preamble_offset, prev];
+            end
+        end
+
+        preamble_offset = preamble_offset + start_offset - 1;
     end
 
 end
