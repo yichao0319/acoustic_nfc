@@ -421,7 +421,7 @@ end
 
 
 %% -----------------------------------
-%% get_ber: function description
+%% get_snr: function description
 %% -----------------------------------
 function [snr] = get_snr(preamble, rcv_preamble)
     % snr = log10( (abs(rcv_preamble).^2) / mean(mean(abs(rcv_preamble-preamble).^2)) * 10 ) * 10;

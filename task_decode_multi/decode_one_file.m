@@ -381,7 +381,7 @@ function [BERs] = decode_one_file(seed, filename, input_rcv_dir, output_rcv_dir,
     this_ber = ber / num_bits;
     % BERS(fi, seed) = this_ber;
     BER = this_ber;
-    fprintf('BER=%f\n', BER);
+    fprintf('  BER=%f\n', BER);
     BERs(1, p_idx) = BER;
 
     if DEBUG5, 
@@ -392,15 +392,6 @@ function [BERs] = decode_one_file(seed, filename, input_rcv_dir, output_rcv_dir,
       fprintf('    ber              = %d / %d = %1.2g\n', ber, num_bits, this_ber);
     end
 
-    CSIs_real = real(CSIs);
-    CSIs_imag = imag(CSIs);
-    dlmwrite([output_rcv_dir filename '.h.txt'], [CSIs_real CSIs_imag], 'delimiter', '\t');
-
-    fh = figure(1);
-    clf;
-    plot(SNRs(:, 1:3));
-    print(fh, '-dpng', './tmp/snr.png');
-
     sync_fft_real = real(sync_fft);
     sync_fft_imag = imag(sync_fft);
     % dlmwrite([output_rcv_dir filename '.preamble.txt'], [sync_fft_real sync_fft_imag], 'delimiter', '\t');
@@ -410,6 +401,15 @@ function [BERs] = decode_one_file(seed, filename, input_rcv_dir, output_rcv_dir,
     %%
     % dlmwrite([output_rcv_dir filename '.demod.txt'], data_demod, 'delimiter', '\t');
   end
+
+  CSIs_real = real(CSIs);
+  CSIs_imag = imag(CSIs);
+  dlmwrite([output_rcv_dir filename '.h.txt'], [CSIs_real CSIs_imag], 'delimiter', '\t');
+
+  fh = figure(1);
+  clf;
+  plot(SNRs(:, 1:3));
+  print(fh, '-dpng', './tmp/snr.png');
 
   return;
 end

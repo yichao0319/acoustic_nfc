@@ -4,6 +4,8 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
     DEBUG1 = 1;
     DEBUG2 = 0;
 
+    font_size = 18;
+
     
     % size of entire sandwich (note that there is one empty symbol at the end)
     swch_samples = (slice_width * slice_count + 1) * Nofdm;
@@ -65,8 +67,13 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
     end
 
     fh = figure;
+    clf;
     plot(p_lst);
-    print(fh, '-dpng', './tmp/plist.png');
+    % xlim([0 swch_samples*2]);
+    set(gca, 'FontSize', font_size);
+    set(gca, 'OuterPosition', [0 0 1 0.5]);
+    xlim([0 400000]);
+    print(fh, '-dpsc', './tmp/plist.ps');
 
     % fd=fopen('p2.txt','w');
     % fprintf(fd,'%f\n',p_lst);
@@ -120,13 +127,20 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
         tmp_idx_list = find(p_lst > this_thresh);
 
         %% every swch_samples*2, find a packet
-        prev = tmp_idx_list(1);
+        %% XXX: either the first or the second is the true start of the first packet
+        prev = find_nearby_largest(p_lst, tmp_idx_list(1));
         for li = tmp_idx_list(2:end)
             if li >= prev + swch_samples/2
-                prev = li;
+                prev2 = li;
                 break;
             end
         end
+        prev2 = find_nearby_largest(p_lst, prev2);
+        %% XXX: even the first one is slight larger, still use the second one
+        if p_lst(prev2) > p_lst(prev) * 0.99  
+            prev = prev2;
+        end
+
         preamble_offset = [prev];
         for li = tmp_idx_list(2:end)
             if li >= prev + swch_samples*2
@@ -140,3 +154,18 @@ function [preamble_offset] = sync_pkt(slice_width, slice_count, Nofdm, Nfft, Nff
 
 end
 
+
+%% find_nearby_largest
+function [ind] = find_nearby_largest(p_lst, ind)
+    new_ind = ind; 
+    new_p   = p_lst(ind);
+
+    for ii = ind+1:ind+20
+        if p_lst(ii) > new_p
+            new_ind = ii;
+            new_p = p_lst(ii);
+        end
+    end
+
+    ind = new_ind;
+end
