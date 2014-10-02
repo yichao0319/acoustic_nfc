@@ -102,6 +102,10 @@ Codes:
             1) velocity calculated using different methods
             2) Power spectal density
 
+    b) get_position.m
+        - Goal: calculate the postion of the mic with 2 speakers
+        - Output:
+            1) position
 
 =======================================================
 Sound Code Usage:
@@ -214,3 +218,112 @@ Experiments
         - exp: 1:5 (did the exp 5 times)
         - speed: 3 > 2 > 1
         - direction: move toward or away from the speaker
+
+5. exp0928
+    f0 = 17999.5
+    a) distXX.dirXX.expXX.s3
+        static traces
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: 10cm, 20cm, 30cm, ..., 100cm
+        - angle of the mic: 0 (face the speaker), 180 (clockwise)
+        - exp: 1, 2 (did the exp twice)
+    b) freq18k.dist100.XX.expXX
+        mobile traces
+        sound source: pure tone at 18kHz
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: move between 150cm and 50cm
+        - exp: 1:5 (did the exp 5 times)
+        - direction: move toward or away from the speaker
+    c) freq18k.dist0.expXX
+        mobile traces
+        sound source: pure tone at 18kHz
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: 100cm -> 50cm -> 150cm -> 50cm
+        - exp: 1:5 (did the exp 5 times)
+    c) freq18k.circle.expXX
+        mobile traces
+        sound source: pure tone at 18kHz
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: 100cm -(half circle)-> 50cm -> stop for 1s -(half circle)-> 100cm
+        - exp: 1:5 (did the exp 5 times)
+    d) freq18k.random.expXX
+        mobile traces
+        sound source: pure tone at 18kHz
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: 100cm -(random path)-> 100cm
+        - exp: 1:5 (did the exp 5 times)
+
+6. exp0930
+    f0 = 17999
+    f1 = 18999
+    a) freq18k.dist100.sXX.XX.expXX
+        mobile traces
+        sound source: pure tone at 18kHz, loc: [0, 0)]
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: move between 150cm and 50cm
+        - source: 1 (online tone generator), 2 (wav file)
+        - exp: 1:5 (did the exp 5 times)
+        - direction: move toward or away from the speaker
+    b) freq18k20k.dist0_20.expXX
+        mobile traces
+        sound source: 
+            1) pure tone at 18kHz, loc: [0, 0)]
+            2) pure tone at 20kHz, loc: [50, 50)]
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: move from [0, 100] -> [0, 20]
+            1) speaker 1: 80cm
+            2) speaker 2: 12.40cm
+        - source: 18k_20k_600s.wav
+        - exp: 1:5 (did the exp 5 times)
+    c) freq18k20k.dist0_30.expXX
+        mobile traces
+        sound source: 
+            1) pure tone at 18kHz, loc: [0, 0)]
+            2) pure tone at 20kHz, loc: [50, 50)]
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - distance: move from [0, 50] -> [30, 50]
+            1) speaker 1: 8.31cm
+            2) speaker 2: 30cm
+        - source: 18k_20k_600s.wav
+        - exp: 1:5 (did the exp 5 times)
+    d) freq18k20k.picXX
+        mobile traces
+        sound source: 
+            1) pure tone at 18kHz, loc: [0, 0)]
+            2) pure tone at 20kHz, loc: [50, 50)]
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - mic initial location: [0, 50]
+        - source: 18k_20k_600s.wav
+        - pic: 1~4 (different pattern)
+    e) freq18k17k.XXX
+        mobile traces
+        sound source: 
+            1) pure tone at 18kHz, loc: [0, 0)]
+            2) pure tone at 17kHz, loc: [50, 50)]
+        sender: MacBook Air with speaker
+        receiver: Windows with mic
+        location: lab
+        - mic initial location: [0, 50]
+        - source: 18k_20k_600s.wav
+        - different patterns:
+            1) static
+            2) square: moving in squares
+            3) circle: moving in circles
