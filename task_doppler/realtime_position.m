@@ -11,17 +11,17 @@ function realtime_position()
     frame_size = Fs;
 
     f1 = [16999];
-    f2 = [18999];
+    f2 = [17999];
     half_band = 200;
 
     spk1_pos = [0, 0];
-    spk2_pos = [0.50, 0.50];
+    spk2_pos = [0.60, 0];
     dist_of_spks = cal_distance(spk1_pos, spk2_pos);
 
     NUM_PARTICLE = 1000;
     num_valid_pat = NUM_PARTICLE;
-    x_lim = [-1 1];
-    y_lim = [-1 1];
+    x_lim = [-0.1 1];
+    y_lim = [-2 0];
 
     MOVE_SPEED_THRESH = 1;  %% m/s
     MOVE_DIST_THRESH = MOVE_SPEED_THRESH * (window/Fs);
@@ -32,7 +32,7 @@ function realtime_position()
     %% variables
     %% ====================================
     % duration = input('type the duration of the experiment:');
-    duration = 10;
+    duration = 100;
     traces1 = [-1];
     traces2 = [-1];
     traces = zeros(2, 1);
@@ -55,10 +55,12 @@ function realtime_position()
     disp('Speak into microphone now');
 
     base_time = 0;
+    ti_all = 0;
     tic;
     while toc < duration,
         wav_data = step(har);
         % plot_wav(wav_data, Fs);
+        fprintf('time: %f\n', toc);
         
         %% ====================================
         %% Short-Time Fourier Transform
@@ -68,7 +70,9 @@ function realtime_position()
         base_time = base_time + frame_size / Fs;
 
 
-        for t = 1:length(T)
+        for ti = 1:length(T)
+            ti_all = ti_all + 1;
+            fprintf('  ti%d (%d):\n', ti, ti_all);
 
             %% ====================================
             %% Calculate freq and position shift
@@ -80,7 +84,7 @@ function realtime_position()
             avg_d1 = 0;
 
             for fi = 1:length(f1)
-                [peak_freq, freq_offset, vel, dist_offset] = get_shift(F, P, T, t, Fs, f1(fi), half_band);
+                [peak_freq, freq_offset, vel, dist_offset] = get_shift(F, P, T, ti, Fs, f1(fi), half_band);
 
                 avg_f_offset1 = avg_f_offset1 + freq_offset;
                 avg_v1 = avg_v1 + vel;
@@ -90,7 +94,7 @@ function realtime_position()
             avg_f_offset1 = avg_f_offset1 / length(f1);
             avg_v1 = avg_v1 / length(f1);
             avg_d1 = avg_d1 / length(f1);
-            traces1(t) = avg_d1;
+            traces1(ti_all) = avg_d1;
             sum_movement1 = sum(traces1);
             
             %% for each tone from speaker 2
@@ -99,7 +103,7 @@ function realtime_position()
             avg_d2 = 0;
 
             for fi = 1:length(f2)
-                [peak_freq, freq_offset, vel, dist_offset] = get_shift(F, P, T, t, Fs, f2(fi), half_band);
+                [peak_freq, freq_offset, vel, dist_offset] = get_shift(F, P, T, ti, Fs, f2(fi), half_band);
 
                 avg_f_offset2 = avg_f_offset2 + freq_offset;
                 avg_v2 = avg_v2 + vel;
@@ -109,12 +113,10 @@ function realtime_position()
             avg_f_offset2 = avg_f_offset2 / length(f2);
             avg_v2 = avg_v2 / length(f2);
             avg_d2 = avg_d2 / length(f2);
-            traces2(t) = avg_d2;
+            traces2(ti_all) = avg_d2;
             sum_movement2 = sum(traces2);
 
-            plot_1d_trace(traces1, traces2);
-
-
+            
             %% ====================================
             %% Calculate absolute position
             %% ====================================
@@ -123,14 +125,14 @@ function realtime_position()
                 % fprintf('pidx=%d, t=%d\n', pidx, t);
                 % size(particle_pos)
                 
-                [pos, valid] = update_position(particle_pos(pidx, :, t), spk1_pos, spk2_pos, traces1(t), traces2(t), MOVE_DIST_THRESH);
+                [pos, valid] = update_position(particle_pos(pidx, :, ti_all), spk1_pos, spk2_pos, traces1(ti_all), traces2(ti_all), MOVE_DIST_THRESH);
                 if valid == 1
                     if valid_idx(1) == -1
                         valid_idx = [pidx];
                     else
                         valid_idx = [valid_idx, pidx];
                     end
-                    particle_pos(pidx, :, t+1) = pos;
+                    particle_pos(pidx, :, ti_all+1) = pos;
                 end
             end
             if valid_idx(1) > 0
@@ -140,13 +142,16 @@ function realtime_position()
             else
                 particle_pos = zeros(NUM_PARTICLE, 2, 10);
                 for pidx = 1:num_valid_pat
-                    particle_pos(pidx, 1, 1) = rand * (x_lim(2)-x_lim(1)) + x_lim(1);
-                    particle_pos(pidx, 2, 1) = rand * (y_lim(2)-y_lim(1)) + y_lim(1);
+                    particle_pos(pidx, 1, ti_all+1) = rand * (x_lim(2)-x_lim(1)) + x_lim(1);
+                    particle_pos(pidx, 2, ti_all+1) = rand * (y_lim(2)-y_lim(1)) + y_lim(1);
                 end
+                num_valid_pat = size(particle_pos, 1);
             end
 
-            plot_particles(particle_pos(:, :, 1:t+1), x_lim, y_lim);
+            plot_particles(particle_pos(:, :, 1:ti_all+1), x_lim, y_lim);
         end
+
+        plot_1d_trace(traces1, traces2);
 
     end
 
@@ -296,7 +301,6 @@ function [pos, valid] = update_position(pre_pos, spk1_pos, spk2_pos, mv1, mv2, M
     end
     %% ----------------------------------
 
-    pos = new_pos;
     valid = 1;
 end
 
