@@ -19,6 +19,14 @@ function move_dists = get_position(input_dir, filename, f0, f1, mic_pos, x_lim, 
     DEBUG6 = 1;  %% show frequency shift
 
 
+    spk1_pos = [0, 0];
+    % spk2_pos = [0.50, 0.50];
+    spk2_pos = [0.6, 0];
+    % mic_pos = [0, 1];
+    % mic_pos = [0, 0.5];
+    dist_of_spks = cal_distance(spk1_pos, spk2_pos);
+
+
     %% ======================
     %% get traces
     %% ======================
@@ -57,13 +65,6 @@ function move_dists = get_position(input_dir, filename, f0, f1, mic_pos, x_lim, 
     %% moving the mic
     %% ======================
     if DEBUG2, fprintf('Moving the mic...\n'); end
-
-    spk1_pos = [0, 0];
-    spk2_pos = [0.50, 0.50];
-    % mic_pos = [0, 1];
-    % mic_pos = [0, 0.5];
-    dist_of_spks = cal_distance(spk1_pos, spk2_pos);
-
 
     mic_positions = zeros(2, length(time_spk)+1);
     mic_positions(:, 1) = mic_pos;

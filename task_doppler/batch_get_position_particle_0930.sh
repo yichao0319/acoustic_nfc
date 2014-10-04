@@ -64,3 +64,13 @@ rm ./tmp/freq18k20k.dist80_0.exp5.particle.avi
 /usr/local/MATLAB/R2013b/bin/matlab -r "get_position_particle('../data/rcv_pkts/exp0930/', 'freq18k20k.dist0_30.exp5', 17999, 19999, [-0.1, 0.5], [0, 1]); exit;"
 ffmpeg -i ./tmp/freq18k20k.dist0_30.exp5.particle.avi ./tmp/freq18k20k.dist0_30.exp5.particle.mp4 -y
 rm ./tmp/freq18k20k.dist0_30.exp5.particle.avi
+
+
+
+
+
+
+##########################################################
+
+get_position_particle('../data/rcv_pkts/exp0930/', 'freq18k20k_17k19k.circle.exp1', [17999, 19999], [16999, 18999], [-0.3, 0.3], [0.2, 0.8]);
+
