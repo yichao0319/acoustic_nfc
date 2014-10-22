@@ -6,7 +6,7 @@
 %% ====================================
 
 %% get_doppler_shift: function description
-function move_dists = get_position(input_dir, filename, f0, f1, mic_pos, x_lim, y_lim)
+function [mic_positions] = get_position(input_dir, filename, f0, f1, mic_pos, x_lim, y_lim)
     addpath('../util/matlab/change_point_detection/');
     opengl software;
 

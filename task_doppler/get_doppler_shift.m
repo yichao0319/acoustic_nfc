@@ -97,7 +97,7 @@ function [traces, T] = get_doppler_shift(input_dir, filename, f0)
     if DEBUG2, fprintf('Short-time Fourier transform\n'); end
 
     % window = Fs/2; % Should be minimum twice the maximum frequency we want to analyze
-    window = Fs/32;
+    window = floor(Fs/32);
     noverlap = floor(window/4); % 75% overlap
     Nfft = Fs;
     % Nfft = window;
